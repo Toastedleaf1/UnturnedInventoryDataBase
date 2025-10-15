@@ -1,0 +1,14 @@
+{
+  "name": "unturned-inventory",
+  "version": "1.0.0",
+  "description": "Free Unturned Steam Inventory Database with cached Steam market prices and leaderboard.",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "sqlite3": "^5.1.6"
+  }
+}
