@@ -1,1 +1,12 @@
+services:
+  - type: web
+    name: unturned-inventory
+    env: node
+    rootDir: .
+    buildCommand: "npm install"
+    startCommand: "node server.js"
+    disk:
+      name: market-data
+      mountPath: /data
+      sizeGB: 1
 
