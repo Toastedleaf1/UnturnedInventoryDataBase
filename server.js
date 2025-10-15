@@ -4,6 +4,7 @@ import os from "os";
 import path from "path";
 import sqlite3 from "sqlite3";
 import bodyParser from "body-parser";
+import fetch from "node-fetch"; // ✅ Needed to fetch Steam inventory
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -113,7 +114,26 @@ app.post("/api/clear-cache", (req, res) => {
   });
 });
 
-// ✅ Serve index.html
+// ✅ Fetch Unturned inventory from Steam for a given Steam ID
+app.get("/api/inventory/:steamId", async (req, res) => {
+  try {
+    const steamId = req.params.steamId;
+    const url = `https://steamcommunity.com/inventory/${steamId}/304930/2?l=english&count=5000`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      return res.status(500).json({ error: "Failed to fetch Steam inventory" });
+    }
+
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    console.error("❌ Steam API error:", err);
+    res.status(500).json({ error: "Steam API request failed" });
+  }
+});
+
+// ✅ Serve frontend (index.html)
 app.get("*", (req, res) => {
   res.sendFile(path.resolve("public/index.html"));
 });
@@ -122,3 +142,4 @@ app.get("*", (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
+
