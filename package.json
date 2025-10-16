@@ -1,16 +1,14 @@
 {
-  "name": "unturned-inventory-tracker",
+  "name": "unturned-inventory-database",
   "version": "1.0.0",
-  "description": "Unturned Steam inventory fetcher and cache server",
-  "main": "server.js",
   "type": "module",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^4.19.2",
-    "node-fetch": "^3.3.2",
-    "sqlite3": "^5.1.7"
+    "express": "^4.18.2",
+    "sqlite3": "^5.1.6"
   }
 }
