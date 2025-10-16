@@ -1,11 +1,9 @@
-// ✅ Unturned Steam Inventory Database Server
 import express from "express";
 import sqlite3 from "sqlite3";
 import fs from "fs";
 import os from "os";
 import path from "path";
 
-// ✅ Setup
 const app = express();
 const PORT = process.env.PORT || 3000;
 const SECRET_TOKEN = process.env.SECRET_TOKEN || "supersecretkey123";
@@ -17,7 +15,7 @@ if (!fs.existsSync(dataDir)) {
   console.log(`📁 Created temporary data directory at ${dataDir}`);
 }
 
-// ✅ SQLite cache setup
+// ✅ SQLite setup
 const dbPath = path.join(dataDir, "market_cache.db");
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) console.error("❌ Failed to open database:", err.message);
@@ -32,26 +30,21 @@ db.serialize(() => {
   )`);
 });
 
-// ✅ Serve static frontend
 app.use(express.static("public"));
+app.use(express.json());
 
-// ✅ Steam Inventory Endpoint
+// ✅ Steam inventory fetch
 app.get("/api/inventory/:steamId", async (req, res) => {
   try {
     const { steamId } = req.params;
     const url = `https://steamcommunity.com/inventory/${steamId}/304930/2?l=english&count=5000`;
 
     const response = await fetch(url);
-    if (!response.ok)
-      throw new Error(`Failed to fetch Steam inventory for ${steamId}`);
+    if (!response.ok) throw new Error(`Failed to fetch Steam inventory for ${steamId}`);
 
     const data = await response.json();
-
-    if (!data || !data.assets) {
-      return res
-        .status(404)
-        .json({ error: "No inventory found for this Steam ID" });
-    }
+    if (!data || !data.assets)
+      return res.status(404).json({ error: "No inventory found for this Steam ID" });
 
     res.json(data);
   } catch (err) {
@@ -60,7 +53,7 @@ app.get("/api/inventory/:steamId", async (req, res) => {
   }
 });
 
-// ✅ Market price caching (example GET + POST)
+// ✅ Market caching
 app.get("/api/price/:itemName", (req, res) => {
   const { itemName } = req.params;
   db.get(
@@ -74,11 +67,10 @@ app.get("/api/price/:itemName", (req, res) => {
   );
 });
 
-app.post("/api/price/:itemName", express.json(), (req, res) => {
+app.post("/api/price/:itemName", (req, res) => {
   const { itemName } = req.params;
   const { price } = req.body;
   const timestamp = Date.now();
-
   db.run(
     "INSERT OR REPLACE INTO market_cache (item_name, price, timestamp) VALUES (?, ?, ?)",
     [itemName, price, timestamp],
@@ -90,11 +82,9 @@ app.post("/api/price/:itemName", express.json(), (req, res) => {
 });
 
 // ✅ Secure cache clearing
-app.post("/api/clear-cache", express.json(), (req, res) => {
+app.post("/api/clear-cache", (req, res) => {
   const { token } = req.body;
-  if (token !== SECRET_TOKEN) {
-    return res.status(403).json({ error: "Invalid secret token" });
-  }
+  if (token !== SECRET_TOKEN) return res.status(403).json({ error: "Invalid secret token" });
 
   db.run("DELETE FROM market_cache", (err) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -103,7 +93,7 @@ app.post("/api/clear-cache", express.json(), (req, res) => {
   });
 });
 
-// ✅ Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+// ✅ Ping test endpoint
+app.get("/api/ping", (req, res) => res.json({ status: "ok" }));
+
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
