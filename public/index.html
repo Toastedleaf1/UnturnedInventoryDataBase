@@ -162,7 +162,7 @@
       }
 
       try {
-        const url = `https://steamcommunity.com/inventory/${steamId}/304930/2?l=english&count=5000`;
+        const url = `/api/inventory/${steamId}`;
         const response = await fetch(url);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
