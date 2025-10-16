@@ -3,13 +3,13 @@ services:
     name: unturned-inventory-db
     env: node
     plan: free
-    buildCommand: "npm install"
-    startCommand: "npm start"
+    buildCommand: npm install
+    startCommand: npm start
     autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
       - key: SECRET_TOKEN
         value: supersecretkey123
-      # Optionally set PROXY_URLS to a comma-separated list of proxy endpoints that accept a target URL appended or encoded.
-      # Example (only if you have proxies): value: "https://myproxy.example.com/?u=,https://another-proxy/?url="
+      - key: PORT
+        value: 3000
