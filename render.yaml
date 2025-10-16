@@ -1,15 +1,15 @@
 services:
   - type: web
-    name: unturned-inventory-db
+    name: unturned-inventory-tracker
     env: node
     plan: free
-    buildCommand: npm install
-    startCommand: npm start
-    autoDeploy: true
+    region: oregon
+    buildCommand: "npm install"
+    startCommand: "npm start"
     envVars:
-      - key: NODE_ENV
-        value: production
       - key: SECRET_TOKEN
-        value: supersecretkey123
-      - key: PORT
-        value: 3000
+        value: "supersecretkey123"
+    autoDeploy: true
+    branch: main
+    # Public folder for static frontend
+    staticPublishPath: public
