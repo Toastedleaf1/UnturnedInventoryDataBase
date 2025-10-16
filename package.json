@@ -1,18 +1,21 @@
 {
   "name": "unturned-inventory-db",
   "version": "1.0.0",
-  "description": "Unturned Steam Inventory DB with robust server-side fetch + sqlite cache",
+  "description": "A free Unturned Steam inventory database and leaderboard site with caching and Steam proxy support.",
   "main": "server.js",
   "type": "module",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^4.19.2",
-    "sqlite3": "^5.1.7",
-    "cors": "^2.8.5"
+    "node-fetch": "^3.3.2",
+    "sqlite3": "^5.1.6"
   },
   "engines": {
-    "node": ">=18.0.0"
-  }
+    "node": ">=18"
+  },
+  "author": "Unturned Inventory Project",
+  "license": "MIT"
 }
