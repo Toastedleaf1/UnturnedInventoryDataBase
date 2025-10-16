@@ -31,49 +31,64 @@ db.run(`
 
 const SECRET_TOKEN = process.env.SECRET_TOKEN || "supersecretkey123";
 
-// 🧩 Helper to fetch inventory with proxy fallback
+// ✅ Helper to safely fetch + log what Steam returns
+async function tryFetch(url, steamId, proxyLabel) {
+  console.log(`🌐 Attempting ${proxyLabel} fetch for ${steamId}`);
+
+  const headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Connection": "keep-alive",
+    "Referer": "https://steamcommunity.com/",
+    "Origin": "https://steamcommunity.com"
+  };
+
+  const response = await fetch(url, { headers });
+  const text = await response.text();
+
+  console.log(`🔍 [${proxyLabel}] Status ${response.status}: ${response.statusText}`);
+  console.log(`🧾 [${proxyLabel}] Response preview:\n${text.slice(0, 400)}`);
+
+  if (!response.ok || text.includes("<html") || text.trim() === "" || text === "null") {
+    throw new Error(`Invalid or blocked response from ${proxyLabel}`);
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`Invalid JSON from ${proxyLabel}`);
+  }
+}
+
+// ✅ Main function with proxy rotation
 async function fetchInventory(steamId) {
   const baseUrl = `https://steamcommunity.com/inventory/${steamId}/304930/2?l=english&count=5000`;
-  const proxies = [
-    baseUrl,
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(baseUrl)}`,
-    `https://corsproxy.io/?${encodeURIComponent(baseUrl)}`
+  const urls = [
+    { url: baseUrl, label: "Direct" },
+    { url: `https://api.allorigins.win/raw?url=${encodeURIComponent(baseUrl)}`, label: "AllOrigins Proxy" },
+    { url: `https://corsproxy.io/?${encodeURIComponent(baseUrl)}`, label: "CorsProxy.io" }
   ];
 
-  for (const url of proxies) {
+  for (const { url, label } of urls) {
     try {
-      console.log(`🌐 Trying ${url}`);
-      const response = await fetch(url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-          "Accept": "application/json, text/plain, */*",
-          "Accept-Language": "en-US,en;q=0.9",
-          "Connection": "keep-alive"
-        },
-      });
-
-      console.log(`🔍 Status ${response.status} ${response.statusText}`);
-      const text = await response.text();
-
-      if (text.includes("Access Denied") || text.trim() === "" || text === "null") {
-        console.warn("⚠️ Proxy returned empty or blocked content.");
-        continue;
+      const data = await tryFetch(url, steamId, label);
+      if (data && data.assets) {
+        console.log(`✅ Success using ${label}`);
+        return data;
       }
-
-      const data = JSON.parse(text);
-      if (data && data.assets) return data;
-
     } catch (err) {
-      console.warn(`⚠️ Failed with ${url}:`, err.message);
+      console.warn(`⚠️ ${label} failed: ${err.message}`);
     }
   }
 
-  throw new Error("All proxies failed or returned invalid data.");
+  throw new Error("All methods failed or returned blocked responses.");
 }
 
-// 🚀 API: get inventory
+// ✅ API: Get Unturned inventory
 app.get("/api/inventory/:steamId", async (req, res) => {
   const { steamId } = req.params;
+
   if (!steamId || !/^\d{17}$/.test(steamId))
     return res.status(400).json({ error: "Invalid SteamID64" });
 
@@ -82,11 +97,14 @@ app.get("/api/inventory/:steamId", async (req, res) => {
     res.json(data);
   } catch (err) {
     console.error("❌ Steam API error:", err.message);
-    res.status(500).json({ error: "Steam API request failed" });
+    res.status(500).json({
+      error: "Steam API request failed",
+      details: err.message
+    });
   }
 });
 
-// 🧮 Cached price check
+// ✅ Cached price lookup
 app.get("/api/price/:item", (req, res) => {
   const { item } = req.params;
   db.get("SELECT price, last_updated FROM market_cache WHERE item_name = ?", [item], (err, row) => {
@@ -96,7 +114,7 @@ app.get("/api/price/:item", (req, res) => {
   });
 });
 
-// 🔒 Clear cache (requires secret token)
+// ✅ Clear cache (requires secret token)
 app.post("/api/clear-cache", (req, res) => {
   const token = req.headers.authorization?.replace("Bearer ", "");
   if (token !== SECRET_TOKEN) return res.status(403).json({ error: "Unauthorized" });
