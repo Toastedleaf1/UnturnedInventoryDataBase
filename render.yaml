@@ -2,18 +2,16 @@ services:
   - type: web
     name: unturned-inventory-db
     env: node
+    buildCommand: npm install
+    startCommand: npm start
     plan: free
-    buildCommand: "npm install"
-    startCommand: "npm start"
-    autoDeploy: true
-
     envVars:
       - key: NODE_ENV
         value: production
       - key: SECRET_TOKEN
         value: supersecretkey123
+    autoDeploy: true
+    regions:
+      - oregon
 
-    headers:
-      - path: /*
-        name: Cache-Control
-        value: no-store
+staticPublishPath: public
