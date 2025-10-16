@@ -1,132 +1,217 @@
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Unturned Inventory DB</title>
-  <style>
-    body{background:#0f0f10;color:#eee;font-family:Arial,Helvetica,sans-serif;margin:0}
-    .top{padding:12px 16px;background:#111;display:flex;align-items:center;gap:12px}
-    .tabs{display:flex;gap:12px}
-    .tab{padding:8px 12px;cursor:pointer;color:#bbb}
-    .tab.active{color:#fff;border-bottom:3px solid #32cd32}
-    .search{margin:12px;padding:8px}
-    input[type=text]{padding:8px;border:1px solid #333;background:#121212;color:#fff}
-    button{padding:8px 10px;background:#32cd32;border:none;color:#062706;cursor:pointer}
-    .container{padding:16px}
-    .grid{display:flex;flex-wrap:wrap;gap:10px}
-    .card{width:100px;height:120px;background:#1b1b1b;padding:6px;border-radius:6px}
-    .muted{color:#aaa;font-size:0.9rem}
-  </style>
-</head>
-<body>
-  <div class="top">
-    <div style="font-weight:700">Unturned Inventory DB</div>
-    <div class="tabs">
-      <div class="tab active" data-tab="info">Info</div>
-      <div class="tab" data-tab="leaderboard">Leaderboard</div>
-      <div class="tab" data-tab="add">Add Inventory</div>
-      <div class="tab" data-tab="discord">Discord</div>
-    </div>
-  </div>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Unturned Inventory Tracker</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: #0e1116;
+        color: #f4f4f4;
+        margin: 0;
+        padding: 0;
+      }
 
-  <div style="padding:12px;text-align:center">
-    <input id="globalSearch" type="text" placeholder="Search skins across DB..." style="width:60%;padding:8px">
-  </div>
+      header {
+        text-align: center;
+        padding: 1.5rem 0;
+        background: #151a22;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.6);
+      }
 
-  <div class="container">
-    <div id="info" class="panel"> <h2>Info</h2>
-      <p class="muted">This demo fetches Unturned inventories from Steam and stores them server-side. Prices may not be accurate due to regional differences, Steam delays, and low-sale history.</p>
-    </div>
+      h1 {
+        color: #72d572;
+        font-size: 1.8rem;
+        margin-bottom: 0.3rem;
+      }
 
-    <div id="leaderboard" class="panel" style="display:none">
-      <h2>Leaderboard (stored inventories)</h2>
-      <div><button id="refreshInv">Refresh list</button></div>
-      <div id="invList" style="margin-top:12px"></div>
-      <div id="itemsArea" style="margin-top:12px"></div>
-    </div>
+      p {
+        color: #ccc;
+        font-size: 0.9rem;
+      }
 
-    <div id="add" class="panel" style="display:none">
-      <h2>Add Inventory</h2>
-      <div>
-        <input id="steamInput" type="text" placeholder="Enter SteamID64" />
-        <button id="fetchBtn">Fetch & Save</button>
-      </div>
-      <div id="status" style="margin-top:8px"></div>
-    </div>
+      main {
+        max-width: 800px;
+        margin: 2rem auto;
+        background: #1a1f29;
+        border-radius: 10px;
+        padding: 1.5rem;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+      }
 
-    <div id="discord" class="panel" style="display:none">
-      <h2>Discord</h2>
-      <a href="https://discord.gg/jmd4qzD4JF" target="_blank">Join Discord</a>
-    </div>
-  </div>
+      section {
+        margin-bottom: 2rem;
+      }
 
-  <script>
-    // tabs
-    document.querySelectorAll('.tab').forEach(t => {
-      t.onclick = () => {
-        document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-        t.classList.add('active');
-        const tab = t.dataset.tab;
-        ['info','leaderboard','add','discord'].forEach(id => document.getElementById(id).style.display = (id===tab?'block':'none'));
-        if (tab==='leaderboard') loadInventories();
-      };
-    });
+      h2 {
+        color: #72d572;
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+        border-bottom: 1px solid #2b323e;
+        padding-bottom: 0.3rem;
+      }
 
-    const apiBase = window.location.origin;
+      input,
+      button {
+        padding: 0.6rem 1rem;
+        border-radius: 5px;
+        border: none;
+        margin: 0.3rem 0;
+        font-size: 1rem;
+      }
 
-    async function loadInventories(){
-      const el = document.getElementById('invList');
-      el.innerHTML = 'Loading...';
-      try {
-        const res = await fetch(apiBase + '/api/inventories');
-        const list = await res.json();
-        if (!list.length) { el.innerHTML = '<div>No saved inventories yet.</div>'; return; }
-        el.innerHTML = '<ul>' + list.map(i => `<li><a href="#" data-id="${i.id}" class="invLink">${i.steamid}</a> (items view)</li>`).join('') + '</ul>';
-        document.querySelectorAll('.invLink').forEach(a=>{
-          a.onclick = async (e)=>{
-            e.preventDefault();
-            const id = a.dataset.id;
-            const itemsArea = document.getElementById('itemsArea');
-            itemsArea.innerHTML = 'Loading items...';
-            const r = await fetch(apiBase + '/api/inventories/' + id + '/items');
-            const items = await r.json();
-            if (!items.length) { itemsArea.innerHTML = 'No items'; return; }
-            itemsArea.innerHTML = '<div class="grid">' + items.slice(0,200).map(it => `<div class="card"><img src="${it.icon_url||'https://placehold.co/80x80?text=?'}" style="width:80px;height:80px"><div style="font-size:12px">${it.market_hash_name||it.name||'Unknown'}</div></div>`).join('') + '</div>';
-          };
-        });
-      } catch (err) { el.innerHTML = 'Error loading inventories'; console.error(err); }
-    }
+      input {
+        width: 70%;
+        background: #2a2f3a;
+        color: #f4f4f4;
+      }
 
-    // fetch & save inventory
-    document.getElementById('fetchBtn').addEventListener('click', async ()=>{
-      const steam = document.getElementById('steamInput').value.trim();
-      const status = document.getElementById('status');
-      if (!steam) return status.textContent = 'Enter SteamID';
-      status.textContent = 'Fetching...';
-      try {
-        const res = await fetch(apiBase + '/api/fetch', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ steamid: steam }) });
-        const j = await res.json();
-        if (res.ok) status.textContent = `Saved inventory ID ${j.inventoryId} (${j.assets} assets)`;
-        else status.textContent = 'Failed: ' + (j.error||JSON.stringify(j));
-      } catch (err) { status.textContent = 'Fetch error'; console.error(err); }
-    });
+      button {
+        background: #72d572;
+        color: #000;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background 0.3s;
+      }
 
-    // global search (client-side filtering of currently shown items)
-    document.getElementById('globalSearch').addEventListener('input', async (e) => {
-      const q = e.target.value.trim();
-      if (!q) return;
-      try {
-        const res = await fetch(apiBase + '/api/search?q=' + encodeURIComponent(q));
-        const rows = await res.json();
-        const area = document.getElementById('itemsArea');
-        if (!rows.length) { area.innerHTML = 'No results'; return; }
-        area.innerHTML = '<div class="grid">' + rows.slice(0,200).map(it => `<div class="card"><img src="${it.icon_url||'https://placehold.co/80x80?text=?'}" style="width:80px;height:80px"><div style="font-size:12px">${it.market_hash_name||it.name||'Unknown'}</div></div>`).join('') + '</div>';
-      } catch (err) { console.error(err); }
-    });
+      button:hover {
+        background: #5cc55c;
+      }
 
-    // init
-    // loadInventories(); // lazy: load when leaderboard tab clicked
-  </script>
-</body>
+      pre {
+        background: #11151c;
+        color: #9fe79f;
+        padding: 1rem;
+        border-radius: 8px;
+        overflow-x: auto;
+        font-size: 0.9rem;
+      }
+
+      .error {
+        color: #ff5252;
+        font-weight: bold;
+      }
+
+      .success {
+        color: #72d572;
+      }
+
+      footer {
+        text-align: center;
+        padding: 1rem;
+        color: #777;
+        font-size: 0.8rem;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <h1>Unturned Inventory Tracker</h1>
+      <p>Fetch and analyze Steam inventories with built-in caching</p>
+    </header>
+
+    <main>
+      <!-- ✅ Add Inventory Section -->
+      <section>
+        <h2>Add Inventory</h2>
+        <input
+          id="steamIdInput"
+          type="text"
+          placeholder="Enter SteamID64 (17 digits)"
+        />
+        <button onclick="fetchInventory()">Fetch Inventory</button>
+        <p id="statusMsg"></p>
+      </section>
+
+      <!-- ✅ Search Database -->
+      <section>
+        <h2>Database Lookup</h2>
+        <input
+          id="searchItem"
+          type="text"
+          placeholder="Enter item name to check cached price"
+        />
+        <button onclick="lookupPrice()">Search Cache</button>
+        <p id="cacheMsg"></p>
+      </section>
+
+      <!-- ✅ Results -->
+      <section>
+        <h2>Results</h2>
+        <pre id="output">Waiting for results...</pre>
+      </section>
+    </main>
+
+    <footer>Unturned Market | Powered by Steam Community API</footer>
+
+    <script>
+      const apiBase = window.location.origin;
+
+      async function fetchInventory() {
+        const steamId = document.getElementById("steamIdInput").value.trim();
+        const output = document.getElementById("output");
+        const statusMsg = document.getElementById("statusMsg");
+        output.textContent = "";
+        statusMsg.textContent = "";
+
+        if (!/^\d{17}$/.test(steamId)) {
+          statusMsg.innerHTML =
+            '<span class="error">❌ Invalid SteamID64. Must be 17 digits.</span>';
+          return;
+        }
+
+        statusMsg.innerHTML = "⏳ Fetching inventory...";
+        try {
+          const res = await fetch(`${apiBase}/api/inventory/${steamId}`);
+          const data = await res.json();
+
+          if (!res.ok || data.error) {
+            statusMsg.innerHTML = `<span class="error">❌ Failed: ${data.error || "Unknown error"}</span>`;
+            output.textContent = "";
+            return;
+          }
+
+          if (!data.assets || data.assets.length === 0) {
+            statusMsg.innerHTML =
+              '<span class="error">⚠️ No items found. The inventory may be private or empty.</span>';
+            output.textContent = JSON.stringify(data, null, 2);
+            return;
+          }
+
+          statusMsg.innerHTML = `<span class="success">✅ Successfully loaded ${data.assets.length} items!</span>`;
+          output.textContent = JSON.stringify(data, null, 2);
+        } catch (err) {
+          statusMsg.innerHTML = `<span class="error">❌ Fetch failed: ${err.message}</span>`;
+        }
+      }
+
+      async function lookupPrice() {
+        const item = document.getElementById("searchItem").value.trim();
+        const cacheMsg = document.getElementById("cacheMsg");
+        const output = document.getElementById("output");
+        if (!item) return;
+
+        cacheMsg.textContent = "⏳ Searching cache...";
+        try {
+          const res = await fetch(`${apiBase}/api/price/${encodeURIComponent(item)}`);
+          const data = await res.json();
+
+          if (data.cached) {
+            cacheMsg.innerHTML = `<span class="success">💰 Found cached price: $${data.price.toFixed(
+              2
+            )}</span>`;
+          } else {
+            cacheMsg.innerHTML =
+              '<span class="error">⚠️ Item not found in cache.</span>';
+          }
+
+          output.textContent = JSON.stringify(data, null, 2);
+        } catch (err) {
+          cacheMsg.innerHTML = `<span class="error">❌ Cache lookup failed: ${err.message}</span>`;
+        }
+      }
+    </script>
+  </body>
 </html>
