@@ -7,97 +7,77 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #121212;
-      color: #fff;
+      background: #0e0e0e;
+      color: #f5f5f5;
       margin: 40px;
     }
     h1 {
-      color: #00ff99;
-      margin-bottom: 10px;
-    }
-    h3 {
-      margin-top: 30px;
-      color: #00ff99;
+      color: #00ff9d;
+      text-align: center;
     }
     input, button {
-      padding: 8px 12px;
-      border: none;
+      padding: 10px;
       border-radius: 6px;
-      margin: 4px;
+      border: none;
+      margin: 5px;
+      font-size: 1em;
     }
     input {
-      width: 240px;
+      width: 260px;
     }
     button {
-      cursor: pointer;
-      background: #00ff99;
+      background-color: #00ff9d;
       color: #000;
+      cursor: pointer;
       font-weight: bold;
-      transition: background 0.2s;
+      transition: 0.2s;
     }
     button:hover {
-      background: #00cc7a;
+      background-color: #00cc7c;
     }
     pre {
-      background: #1e1e1e;
-      padding: 12px;
+      background: #1a1a1a;
+      padding: 10px;
       border-radius: 6px;
-      overflow-x: auto;
       white-space: pre-wrap;
       word-wrap: break-word;
     }
-    .leaderboard-entry {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: #1b1b1b;
-      padding: 8px 12px;
-      border-radius: 6px;
-      margin-bottom: 6px;
+    .section {
+      margin-top: 40px;
     }
-    .leaderboard-entry:hover {
-      background: #222;
-    }
-    .steam-link {
-      color: #00aaff;
-      text-decoration: none;
+    .source-tag {
       font-weight: bold;
-      transition: color 0.2s;
+      color: #00aaff;
     }
-    .steam-link:hover {
-      color: #0088cc;
-      text-decoration: underline;
+    .error {
+      color: #ff5555;
     }
-    .view-btn {
-      background: #0078ff;
-      color: #fff;
-      padding: 6px 10px;
-      border-radius: 4px;
-      font-size: 0.9em;
-    }
-    .view-btn:hover {
-      background: #005fcc;
+    .success {
+      color: #00ff9d;
     }
   </style>
 </head>
 <body>
   <h1>🔍 Unturned Inventory Database</h1>
 
-  <input id="steamId" placeholder="Enter SteamID64" />
-  <button id="fetchBtn">Fetch & Save Inventory</button>
+  <div class="section">
+    <h3>📥 Fetch & Save Inventory</h3>
+    <input id="steamId" placeholder="Enter SteamID64" />
+    <button id="fetchBtn">Fetch Inventory</button>
+    <pre id="result">No request yet.</pre>
+  </div>
 
-  <h3>Results</h3>
-  <pre id="result">No request yet.</pre>
+  <div class="section">
+    <h3>🏆 Leaderboard</h3>
+    <pre id="leaderboard">Loading...</pre>
+  </div>
 
-  <h3>🏆 Inventory Leaderboard</h3>
-  <pre id="leaderboard">Loading...</pre>
-
-  <h3>🔎 Search Saved Inventory</h3>
-  <input id="searchId" placeholder="Enter SteamID64 to view" />
-  <button id="searchBtn">Search</button>
-
-  <h3>📦 Inventory Viewer</h3>
-  <pre id="inventoryView">No inventory selected.</pre>
+  <div class="section">
+    <h3>🔎 Search Saved Inventory</h3>
+    <input id="searchId" placeholder="Enter SteamID64" />
+    <button id="searchBtn">Search</button>
+    <pre id="inventoryView">No inventory loaded.</pre>
+  </div>
 
   <script>
     const resultBox = document.getElementById("result");
@@ -106,45 +86,28 @@
 
     async function refreshLeaderboard() {
       leaderboardBox.textContent = "Loading leaderboard...";
-      const res = await fetch("/api/leaderboard");
-      const data = await res.json();
+      try {
+        const res = await fetch("/api/leaderboard");
+        const data = await res.json();
+        if (!data.length) {
+          leaderboardBox.textContent = "No inventories saved yet.";
+          return;
+        }
 
-      if (!data.length) {
-        leaderboardBox.textContent = "No inventories saved yet.";
-        return;
-      }
-
-      leaderboardBox.innerHTML = "";
-      data.forEach((r, i) => {
-        const div = document.createElement("div");
-        div.className = "leaderboard-entry";
-        div.innerHTML = `
-          <span>
-            #${i + 1} • 
-            <a href="https://steamcommunity.com/profiles/${r.steam_id}" target="_blank" class="steam-link">
-              ${r.steam_id}
-            </a>
-          </span>
-          <span>${r.item_count} items</span>
-          <button class="view-btn" data-id="${r.steam_id}">View</button>
-        `;
-        leaderboardBox.appendChild(div);
-      });
-
-      // Add click events for "View" buttons
-      document.querySelectorAll(".view-btn").forEach((btn) => {
-        btn.addEventListener("click", async () => {
-          const id = btn.getAttribute("data-id");
-          await loadInventory(id);
+        leaderboardBox.innerHTML = "";
+        data.forEach((r, i) => {
+          leaderboardBox.innerHTML += `#${i + 1} — ${r.steam_id} (${r.item_count} items)\n`;
         });
-      });
+      } catch (err) {
+        leaderboardBox.textContent = "❌ Failed to load leaderboard.";
+      }
     }
 
     async function loadInventory(steamId) {
       inventoryView.textContent = `Loading inventory for ${steamId}...`;
       try {
         const res = await fetch(`/api/search/${steamId}`);
-        if (!res.ok) throw new Error("Not found or DB error.");
+        if (!res.ok) throw new Error("Not found or DB error");
         const data = await res.json();
         inventoryView.textContent = `✅ ${steamId} — ${data.inventory.length} items\nLast Updated: ${new Date(data.last_updated).toLocaleString()}`;
       } catch (err) {
@@ -154,7 +117,7 @@
 
     document.getElementById("fetchBtn").addEventListener("click", async () => {
       const steamId = document.getElementById("steamId").value.trim();
-      resultBox.textContent = "Fetching Steam inventory...";
+      resultBox.textContent = "Fetching inventory...";
 
       if (!/^\d{17}$/.test(steamId)) {
         resultBox.textContent = "❌ Invalid SteamID64.";
@@ -162,24 +125,23 @@
       }
 
       try {
-        const url = `/api/inventory/${steamId}`;
-        const response = await fetch(url);
+        const response = await fetch(`/api/inventory/${steamId}`);
+        const text = await response.text();
+
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
+        const data = JSON.parse(text);
 
-        if (!data.assets) throw new Error("Inventory is private or empty.");
-        resultBox.textContent = `✅ Found ${data.assets.length} items. Uploading...`;
+        if (!data.assets && !data.items && !Array.isArray(data))
+          throw new Error("Unexpected response format.");
 
-        const saveRes = await fetch("/api/save-inventory", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ steamId, inventory: data.assets }),
-        });
-        const saveData = await saveRes.json();
-        resultBox.textContent = `✅ Saved ${saveData.items} items for ${steamId}`;
-        refreshLeaderboard();
+        let itemCount = data.assets?.length || data.items?.length || data.length || 0;
+        const source = data.source || "Unknown Source";
+
+        resultBox.innerHTML = `<span class="success">✅ Success!</span> Found <b>${itemCount}</b> items.<br><br>
+          <span class="source-tag">Source:</span> ${source}<br><br>
+          Preview:<br>${JSON.stringify(data, null, 2).slice(0, 600)}...`;
       } catch (err) {
-        resultBox.textContent = `❌ Failed: ${err.message}`;
+        resultBox.innerHTML = `<span class="error">❌ Failed: ${err.message}</span>`;
       }
     });
 
@@ -192,4 +154,3 @@
   </script>
 </body>
 </html>
-
