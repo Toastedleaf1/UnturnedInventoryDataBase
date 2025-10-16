@@ -1,7 +1,7 @@
 {
-  "name": "unturned-inventory-db",
+  "name": "unturned-inventory-tracker",
   "version": "1.0.0",
-  "description": "A free Unturned Steam inventory database and leaderboard site with caching and Steam proxy support.",
+  "description": "Unturned Steam inventory fetcher and cache server",
   "main": "server.js",
   "type": "module",
   "scripts": {
@@ -11,11 +11,6 @@
     "cors": "^2.8.5",
     "express": "^4.19.2",
     "node-fetch": "^3.3.2",
-    "sqlite3": "^5.1.6"
-  },
-  "engines": {
-    "node": ">=18"
-  },
-  "author": "Unturned Inventory Project",
-  "license": "MIT"
+    "sqlite3": "^5.1.7"
+  }
 }
