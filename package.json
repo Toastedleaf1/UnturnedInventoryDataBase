@@ -1,17 +1,27 @@
 {
-  "name": "unturned-inventory-db",
+  "name": "unturned-inventory-database",
   "version": "1.0.0",
-  "description": "A free Unturned Steam inventory database with live Steam API integration and caching.",
-  "type": "module",
+  "description": "A free Unturned Steam Inventory database with leaderboard, item search, and caching.",
   "main": "server.js",
+  "type": "module",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.19.2",
+    "node-fetch": "^3.3.2",
     "sqlite3": "^5.1.7"
   },
   "engines": {
     "node": ">=18.0.0"
-  }
+  },
+  "keywords": [
+    "unturned",
+    "steam",
+    "inventory",
+    "database",
+    "leaderboard"
+  ],
+  "author": "YourName",
+  "license": "MIT"
 }
