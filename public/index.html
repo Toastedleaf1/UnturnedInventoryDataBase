@@ -1,217 +1,53 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Unturned Inventory Tracker</title>
-    <style>
-      body {
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        background: #0e1116;
-        color: #f4f4f4;
-        margin: 0;
-        padding: 0;
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Unturned Inventory Database</title>
+  <style>
+    body { font-family: Arial; margin: 40px; background: #121212; color: #fff; }
+    input, button { padding: 8px; border-radius: 6px; }
+    button { cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>🔍 Unturned Inventory Lookup</h1>
+  <input id="steamId" placeholder="Enter SteamID64" />
+  <button id="fetchBtn">Fetch Inventory</button>
+
+  <pre id="result"></pre>
+
+  <script>
+    document.getElementById("fetchBtn").addEventListener("click", async () => {
+      const steamId = document.getElementById("steamId").value.trim();
+      const resultBox = document.getElementById("result");
+      resultBox.textContent = "Fetching...";
+
+      if (!/^\d{17}$/.test(steamId)) {
+        resultBox.textContent = "❌ Invalid SteamID64";
+        return;
       }
 
-      header {
-        text-align: center;
-        padding: 1.5rem 0;
-        background: #151a22;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.6);
+      const url = `https://steamcommunity.com/inventory/${steamId}/304930/2?l=english&count=5000`;
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+
+        if (!data.assets) throw new Error("Inventory private or empty");
+        resultBox.textContent = JSON.stringify(data, null, 2);
+
+        // Send to backend for saving
+        await fetch("/api/save-inventory", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ steamId, inventory: data.assets })
+        });
+
+      } catch (err) {
+        resultBox.textContent = `❌ Failed: ${err.message}`;
       }
-
-      h1 {
-        color: #72d572;
-        font-size: 1.8rem;
-        margin-bottom: 0.3rem;
-      }
-
-      p {
-        color: #ccc;
-        font-size: 0.9rem;
-      }
-
-      main {
-        max-width: 800px;
-        margin: 2rem auto;
-        background: #1a1f29;
-        border-radius: 10px;
-        padding: 1.5rem;
-        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-      }
-
-      section {
-        margin-bottom: 2rem;
-      }
-
-      h2 {
-        color: #72d572;
-        font-size: 1.2rem;
-        margin-bottom: 0.5rem;
-        border-bottom: 1px solid #2b323e;
-        padding-bottom: 0.3rem;
-      }
-
-      input,
-      button {
-        padding: 0.6rem 1rem;
-        border-radius: 5px;
-        border: none;
-        margin: 0.3rem 0;
-        font-size: 1rem;
-      }
-
-      input {
-        width: 70%;
-        background: #2a2f3a;
-        color: #f4f4f4;
-      }
-
-      button {
-        background: #72d572;
-        color: #000;
-        cursor: pointer;
-        font-weight: bold;
-        transition: background 0.3s;
-      }
-
-      button:hover {
-        background: #5cc55c;
-      }
-
-      pre {
-        background: #11151c;
-        color: #9fe79f;
-        padding: 1rem;
-        border-radius: 8px;
-        overflow-x: auto;
-        font-size: 0.9rem;
-      }
-
-      .error {
-        color: #ff5252;
-        font-weight: bold;
-      }
-
-      .success {
-        color: #72d572;
-      }
-
-      footer {
-        text-align: center;
-        padding: 1rem;
-        color: #777;
-        font-size: 0.8rem;
-      }
-    </style>
-  </head>
-
-  <body>
-    <header>
-      <h1>Unturned Inventory Tracker</h1>
-      <p>Fetch and analyze Steam inventories with built-in caching</p>
-    </header>
-
-    <main>
-      <!-- ✅ Add Inventory Section -->
-      <section>
-        <h2>Add Inventory</h2>
-        <input
-          id="steamIdInput"
-          type="text"
-          placeholder="Enter SteamID64 (17 digits)"
-        />
-        <button onclick="fetchInventory()">Fetch Inventory</button>
-        <p id="statusMsg"></p>
-      </section>
-
-      <!-- ✅ Search Database -->
-      <section>
-        <h2>Database Lookup</h2>
-        <input
-          id="searchItem"
-          type="text"
-          placeholder="Enter item name to check cached price"
-        />
-        <button onclick="lookupPrice()">Search Cache</button>
-        <p id="cacheMsg"></p>
-      </section>
-
-      <!-- ✅ Results -->
-      <section>
-        <h2>Results</h2>
-        <pre id="output">Waiting for results...</pre>
-      </section>
-    </main>
-
-    <footer>Unturned Market | Powered by Steam Community API</footer>
-
-    <script>
-      const apiBase = window.location.origin;
-
-      async function fetchInventory() {
-        const steamId = document.getElementById("steamIdInput").value.trim();
-        const output = document.getElementById("output");
-        const statusMsg = document.getElementById("statusMsg");
-        output.textContent = "";
-        statusMsg.textContent = "";
-
-        if (!/^\d{17}$/.test(steamId)) {
-          statusMsg.innerHTML =
-            '<span class="error">❌ Invalid SteamID64. Must be 17 digits.</span>';
-          return;
-        }
-
-        statusMsg.innerHTML = "⏳ Fetching inventory...";
-        try {
-          const res = await fetch(`${apiBase}/api/inventory/${steamId}`);
-          const data = await res.json();
-
-          if (!res.ok || data.error) {
-            statusMsg.innerHTML = `<span class="error">❌ Failed: ${data.error || "Unknown error"}</span>`;
-            output.textContent = "";
-            return;
-          }
-
-          if (!data.assets || data.assets.length === 0) {
-            statusMsg.innerHTML =
-              '<span class="error">⚠️ No items found. The inventory may be private or empty.</span>';
-            output.textContent = JSON.stringify(data, null, 2);
-            return;
-          }
-
-          statusMsg.innerHTML = `<span class="success">✅ Successfully loaded ${data.assets.length} items!</span>`;
-          output.textContent = JSON.stringify(data, null, 2);
-        } catch (err) {
-          statusMsg.innerHTML = `<span class="error">❌ Fetch failed: ${err.message}</span>`;
-        }
-      }
-
-      async function lookupPrice() {
-        const item = document.getElementById("searchItem").value.trim();
-        const cacheMsg = document.getElementById("cacheMsg");
-        const output = document.getElementById("output");
-        if (!item) return;
-
-        cacheMsg.textContent = "⏳ Searching cache...";
-        try {
-          const res = await fetch(`${apiBase}/api/price/${encodeURIComponent(item)}`);
-          const data = await res.json();
-
-          if (data.cached) {
-            cacheMsg.innerHTML = `<span class="success">💰 Found cached price: $${data.price.toFixed(
-              2
-            )}</span>`;
-          } else {
-            cacheMsg.innerHTML =
-              '<span class="error">⚠️ Item not found in cache.</span>';
-          }
-
-          output.textContent = JSON.stringify(data, null, 2);
-        } catch (err) {
-          cacheMsg.innerHTML = `<span class="error">❌ Cache lookup failed: ${err.message}</span>`;
-        }
-      }
-    </script>
-  </body>
+    });
+  </script>
+</body>
 </html>
