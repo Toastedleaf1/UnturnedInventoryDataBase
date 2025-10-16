@@ -41,30 +41,34 @@ app.use(express.json());
 // ✅ Secret key for admin cache clearing
 const SECRET_TOKEN = process.env.SECRET_TOKEN || "supersecretkey123";
 
-// ✅ Fetch Unturned inventory from Steam for a given Steam ID (with debug logging)
+// ✅ Fetch Unturned inventory from Steam for a given Steam ID (with full debug)
 app.get("/api/inventory/:steamId", async (req, res) => {
   try {
     const steamId = req.params.steamId;
     const url = `https://steamcommunity.com/inventory/${steamId}/304930/2?l=english&count=5000`;
 
+    // 🌐 Start of debug section
     console.log(`🌐 Fetching Steam inventory for ${steamId}`);
 
     const response = await fetch(url, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
         "Accept": "application/json, text/plain, */*",
-        "Accept-Language": "en-US,en;q=0.9"
+        "Accept-Language": "en-US,en;q=0.9",
+        "Connection": "keep-alive",
       },
     });
 
-    // 👇 Extra debug logging (prints Steam’s raw response even on error)
+    // Log status + partial body for debugging
+    console.log(`🔍 Steam status for ${steamId}:`, response.status, response.statusText);
     const rawText = await response.text();
-    console.log(`🔍 Steam raw response for ${steamId}:`, rawText.slice(0, 500)); // limit to first 500 chars
+    console.log(`🧾 Raw Steam response (first 500 chars):`, rawText.slice(0, 500));
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch Steam inventory for ${steamId}`);
+      throw new Error(`Failed to fetch Steam inventory for ${steamId} (HTTP ${response.status})`);
     }
 
+    // ✅ Parse and return the inventory JSON
     const data = JSON.parse(rawText);
     res.json(data);
 
