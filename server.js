@@ -11,6 +11,8 @@ const PORT = process.env.PORT || 3000;
 
 // ✅ Allow frontend calls from any origin
 app.use(cors());
+app.use(express.static("public"));
+app.use(express.json());
 
 // ✅ Create writable temporary directory for cache
 const dataDir = path.join(os.tmpdir(), "data");
@@ -26,7 +28,6 @@ const db = new sqlite3.Database(dbPath, (err) => {
   else console.log(`✅ Connected to SQLite database at ${dbPath}`);
 });
 
-// ✅ Create the cache table if it doesn't exist
 db.run(`
   CREATE TABLE IF NOT EXISTS market_cache (
     item_name TEXT PRIMARY KEY,
@@ -35,36 +36,52 @@ db.run(`
   )
 `);
 
-// ✅ Serve static files (frontend)
-app.use(express.static("public"));
-app.use(express.json());
-
 // ✅ Secret key for admin cache clearing
 const SECRET_TOKEN = process.env.SECRET_TOKEN || "supersecretkey123";
 
-// ✅ Helper function: fetch inventory (with optional proxy)
-async function fetchInventory(steamId, useProxy = false) {
+// 🧠 Proxy endpoints (fallback rotation)
+const PROXY_LIST = [
+  "https://api.allorigins.win/raw?url=",
+  "https://corsproxy.io/?",
+  "https://thingproxy.freeboard.io/fetch/",
+];
+
+// ✅ Helper: fetch inventory with proxy fallback
+async function fetchInventory(steamId) {
   const baseUrl = `https://steamcommunity.com/inventory/${steamId}/304930/2?l=english&count=5000`;
-  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(baseUrl)}`;
-  const url = useProxy ? proxyUrl : baseUrl;
 
-  console.log(`🌐 Fetching inventory for ${steamId} ${useProxy ? "(via proxy)" : "(direct)"}`);
+  for (let i = 0; i <= PROXY_LIST.length; i++) {
+    const useProxy = i < PROXY_LIST.length;
+    const proxyPrefix = useProxy ? PROXY_LIST[i] : "";
+    const url = useProxy ? `${proxyPrefix}${encodeURIComponent(baseUrl)}` : baseUrl;
 
-  const response = await fetch(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-      "Accept": "application/json, text/plain, */*",
-      "Accept-Language": "en-US,en;q=0.9",
-      "Connection": "keep-alive",
-    },
-  });
+    console.log(`🌐 Fetching ${steamId} ${useProxy ? `(via ${proxyPrefix})` : "(direct)"}`);
 
-  console.log(`🔍 Steam status: ${response.status} ${response.statusText}`);
-  const rawText = await response.text();
-  console.log(`🧾 Raw Steam response (first 300 chars):`, rawText.slice(0, 300));
+    try {
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+          "Accept": "application/json, text/plain, */*",
+          "Accept-Language": "en-US,en;q=0.9",
+          "Connection": "keep-alive",
+        },
+      });
 
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return JSON.parse(rawText);
+      console.log(`🔍 Steam status: ${response.status} ${response.statusText}`);
+
+      const rawText = await response.text();
+      if (response.ok) {
+        console.log(`✅ Successfully fetched inventory for ${steamId} (${useProxy ? "proxy" : "direct"})`);
+        return JSON.parse(rawText);
+      } else {
+        console.warn(`⚠️ Attempt ${i + 1} failed (${response.status}): ${rawText.slice(0, 150)}`);
+      }
+    } catch (err) {
+      console.warn(`❌ Proxy #${i + 1} failed: ${err.message}`);
+    }
+  }
+
+  throw new Error("All proxy attempts failed");
 }
 
 // ✅ API: fetch Unturned inventory for a given SteamID
@@ -72,26 +89,11 @@ app.get("/api/inventory/:steamId", async (req, res) => {
   try {
     const steamId = req.params.steamId;
 
-    // 🔒 Validate SteamID64
-    if (!steamId || !/^\d{17}$/.test(steamId)) {
+    if (!/^\d{17}$/.test(steamId)) {
       return res.status(400).json({ error: "Invalid SteamID64" });
     }
 
-    let data;
-    try {
-      data = await fetchInventory(steamId);
-    } catch (err) {
-      console.warn(`⚠️ Direct fetch failed: ${err.message}, retrying with proxy...`);
-      try {
-        data = await fetchInventory(steamId, true);
-      } catch (proxyErr) {
-        console.error(`❌ Proxy fetch failed: ${proxyErr.message}`);
-        return res.status(500).json({
-          error: "Failed to fetch Steam inventory (direct and proxy)",
-        });
-      }
-    }
-
+    const data = await fetchInventory(steamId);
     res.json(data);
   } catch (err) {
     console.error("❌ Steam API error:", err.message);
@@ -113,7 +115,7 @@ app.get("/api/price/:item", (req, res) => {
   );
 });
 
-// ✅ Clear cache route (requires secret token)
+// ✅ Clear cache (requires token)
 app.post("/api/clear-cache", (req, res) => {
   const token = req.headers.authorization?.replace("Bearer ", "");
   if (token !== SECRET_TOKEN) {
