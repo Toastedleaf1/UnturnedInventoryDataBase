@@ -74,18 +74,6 @@ app.get("/api/inventory/:steamId", async (req, res) => {
   }
 });
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch Steam inventory for ${steamId}`);
-    }
-
-    const data = await response.json();
-    res.json(data);
-  } catch (err) {
-    console.error("❌ Steam API error:", err.message);
-    res.status(500).json({ error: "Steam API request failed" });
-  }
-});
-
 // ✅ Example cached price fetch
 app.get("/api/price/:item", (req, res) => {
   const item = req.params.item;
