@@ -46,7 +46,7 @@ const PROXY_LIST = [
   "https://thingproxy.freeboard.io/fetch/",
 ];
 
-// ✅ Helper: fetch inventory with proxy fallback
+// ✅ Helper: fetch inventory with robust proxy + JSON validation
 async function fetchInventory(steamId) {
   const baseUrl = `https://steamcommunity.com/inventory/${steamId}/304930/2?l=english&count=5000`;
 
@@ -67,21 +67,33 @@ async function fetchInventory(steamId) {
         },
       });
 
-      console.log(`🔍 Steam status: ${response.status} ${response.statusText}`);
+      const text = await response.text();
+      console.log(`🔍 Response ${response.status}:`, text.slice(0, 200));
 
-      const rawText = await response.text();
-      if (response.ok) {
-        console.log(`✅ Successfully fetched inventory for ${steamId} (${useProxy ? "proxy" : "direct"})`);
-        return JSON.parse(rawText);
-      } else {
-        console.warn(`⚠️ Attempt ${i + 1} failed (${response.status}): ${rawText.slice(0, 150)}`);
+      if (!response.ok) {
+        console.warn(`⚠️ Attempt ${i + 1} failed (${response.status})`);
+        continue;
+      }
+
+      // ✅ Try parsing JSON safely
+      try {
+        const json = JSON.parse(text);
+
+        if (json && json.assets) {
+          console.log(`✅ Inventory found for ${steamId}`);
+          return json;
+        } else {
+          console.warn(`⚠️ No assets field found for ${steamId}`);
+        }
+      } catch {
+        console.warn(`⚠️ Invalid JSON response for ${steamId}`);
       }
     } catch (err) {
-      console.warn(`❌ Proxy #${i + 1} failed: ${err.message}`);
+      console.warn(`❌ Fetch error for proxy #${i + 1}: ${err.message}`);
     }
   }
 
-  throw new Error("All proxy attempts failed");
+  throw new Error("All proxy attempts failed or returned invalid data.");
 }
 
 // ✅ API: fetch Unturned inventory for a given SteamID
