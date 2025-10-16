@@ -1,277 +1,132 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Unturned Steam Inventory Database</title>
-
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Unturned Inventory DB</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #0e0e0e;
-      color: white;
-      margin: 0;
-      padding: 0;
-      text-align: center;
-    }
-
-    .tabs {
-      display: flex;
-      justify-content: center;
-      background-color: #111;
-      border-bottom: 2px solid #32cd32;
-    }
-
-    .tab {
-      padding: 14px 24px;
-      cursor: pointer;
-      color: #ccc;
-      position: relative;
-      font-size: 16px;
-      transition: color 0.2s ease;
-    }
-
-    .tab:hover {
-      color: white;
-    }
-
-    .tab::after {
-      content: "";
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      height: 3px;
-      background-color: #32cd32;
-      transform: scaleX(0);
-      transition: transform 0.2s ease;
-    }
-
-    .tab:hover::after {
-      transform: scaleX(0.5);
-    }
-
-    .tab.active {
-      color: white;
-    }
-
-    .tab.active::after {
-      transform: scaleX(1);
-    }
-
-    .search-bar {
-      width: 100%;
-      text-align: center;
-      margin: 10px 0;
-    }
-
-    .search-bar input {
-      width: 60%;
-      padding: 8px;
-      font-size: 16px;
-      border: 1px solid #ccc;
-      border-radius: 0;
-    }
-
-    .tab-content {
-      padding: 20px;
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    .add-inventory-bar {
-      margin-top: 10px;
-    }
-
-    .add-inventory-bar input {
-      padding: 6px;
-      font-size: 15px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-
-    .add-inventory-bar button {
-      background-color: #32cd32;
-      color: white;
-      border: none;
-      padding: 6px 10px;
-      margin-left: 6px;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    .add-inventory-bar button:hover {
-      background-color: #28a428;
-    }
-
-    .discord-button {
-      display: inline-block;
-      background-color: #5865f2;
-      color: white;
-      text-decoration: none;
-      padding: 10px 16px;
-      border-radius: 8px;
-      font-size: 16px;
-      transition: background-color 0.2s ease, color 0.2s ease;
-    }
-
-    .discord-button:hover {
-      background-color: #4752c4;
-      color: #e5e5e5;
-    }
-
-    .inventory-grid {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 10px;
-      padding: 20px;
-    }
-
-    .inventory-item {
-      width: 100px;
-      height: 120px;
-      background-color: #1a1a1a;
-      border-radius: 4px;
-      padding: 6px;
-      text-align: center;
-      font-size: 14px;
-      color: #ccc;
-      position: relative;
-    }
-
-    .inventory-item img {
-      width: 80px;
-      height: 80px;
-      border-radius: 4px;
-    }
-
-    .item-name {
-      margin-top: 4px;
-      font-size: 13px;
-    }
-
-    .item-count {
-      position: absolute;
-      bottom: 4px;
-      right: 6px;
-      font-size: 12px;
-      color: #32cd32;
-    }
+    body{background:#0f0f10;color:#eee;font-family:Arial,Helvetica,sans-serif;margin:0}
+    .top{padding:12px 16px;background:#111;display:flex;align-items:center;gap:12px}
+    .tabs{display:flex;gap:12px}
+    .tab{padding:8px 12px;cursor:pointer;color:#bbb}
+    .tab.active{color:#fff;border-bottom:3px solid #32cd32}
+    .search{margin:12px;padding:8px}
+    input[type=text]{padding:8px;border:1px solid #333;background:#121212;color:#fff}
+    button{padding:8px 10px;background:#32cd32;border:none;color:#062706;cursor:pointer}
+    .container{padding:16px}
+    .grid{display:flex;flex-wrap:wrap;gap:10px}
+    .card{width:100px;height:120px;background:#1b1b1b;padding:6px;border-radius:6px}
+    .muted{color:#aaa;font-size:0.9rem}
   </style>
 </head>
-
 <body>
-  <!-- ✅ Tabs -->
-  <div class="tabs">
-    <div class="tab active" data-tab="info">Info</div>
-    <div class="tab" data-tab="leaderboard">Inventory Leaderboard</div>
-    <div class="tab" data-tab="add">Add Inventory</div>
-    <div class="tab" data-tab="discord">Discord</div>
-  </div>
-
-  <!-- ✅ Global Search Bar -->
-  <div class="search-bar">
-    <input type="text" id="mainSearch" placeholder="Search skins..." />
-  </div>
-
-  <!-- ✅ Tab Contents -->
-  <div class="tab-content" id="info">
-    <h2>Unturned Steam Inventory Database</h2>
-    <p>
-      Explore and compare Unturned item inventories from public Steam accounts.<br />
-      <span style="color: #ff4444; text-decoration: underline;">
-        Prices may not be accurate due to regional differences, Steam delays, and low-sale history.
-      </span>
-    </p>
-  </div>
-
-  <div class="tab-content hidden" id="leaderboard">
-    <h2>Inventory Leaderboard</h2>
-    <div id="leaderboardContent">
-      <p>Loading leaderboard...</p>
+  <div class="top">
+    <div style="font-weight:700">Unturned Inventory DB</div>
+    <div class="tabs">
+      <div class="tab active" data-tab="info">Info</div>
+      <div class="tab" data-tab="leaderboard">Leaderboard</div>
+      <div class="tab" data-tab="add">Add Inventory</div>
+      <div class="tab" data-tab="discord">Discord</div>
     </div>
   </div>
 
-  <div class="tab-content hidden" id="add">
-    <h2>Add Inventory</h2>
-    <p>Enter a Steam ID to import that account’s Unturned inventory:</p>
-    <div class="add-inventory-bar">
-      <input type="text" id="steamIdInput" placeholder="Enter Steam ID" />
-      <button id="addInventoryBtn">Add Inventory</button>
+  <div style="padding:12px;text-align:center">
+    <input id="globalSearch" type="text" placeholder="Search skins across DB..." style="width:60%;padding:8px">
+  </div>
+
+  <div class="container">
+    <div id="info" class="panel"> <h2>Info</h2>
+      <p class="muted">This demo fetches Unturned inventories from Steam and stores them server-side. Prices may not be accurate due to regional differences, Steam delays, and low-sale history.</p>
     </div>
-    <div id="addStatus"></div>
-  </div>
 
-  <div class="tab-content hidden" id="discord">
-    <h2>Discord</h2>
-    <a href="https://discord.gg/jmd4qzD4JF" class="discord-button" target="_blank">Join Our Discord</a>
-  </div>
+    <div id="leaderboard" class="panel" style="display:none">
+      <h2>Leaderboard (stored inventories)</h2>
+      <div><button id="refreshInv">Refresh list</button></div>
+      <div id="invList" style="margin-top:12px"></div>
+      <div id="itemsArea" style="margin-top:12px"></div>
+    </div>
 
-  <!-- ✅ Inventory Grid -->
-  <div id="inventoryGrid" class="inventory-grid"></div>
+    <div id="add" class="panel" style="display:none">
+      <h2>Add Inventory</h2>
+      <div>
+        <input id="steamInput" type="text" placeholder="Enter SteamID64" />
+        <button id="fetchBtn">Fetch & Save</button>
+      </div>
+      <div id="status" style="margin-top:8px"></div>
+    </div>
+
+    <div id="discord" class="panel" style="display:none">
+      <h2>Discord</h2>
+      <a href="https://discord.gg/jmd4qzD4JF" target="_blank">Join Discord</a>
+    </div>
+  </div>
 
   <script>
-    // ✅ Tabs
-    const tabs = document.querySelectorAll(".tab");
-    const contents = document.querySelectorAll(".tab-content");
-
-    tabs.forEach((tab) => {
-      tab.addEventListener("click", () => {
-        tabs.forEach((t) => t.classList.remove("active"));
-        contents.forEach((c) => c.classList.add("hidden"));
-        tab.classList.add("active");
-        document.getElementById(tab.dataset.tab).classList.remove("hidden");
-      });
+    // tabs
+    document.querySelectorAll('.tab').forEach(t => {
+      t.onclick = () => {
+        document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+        t.classList.add('active');
+        const tab = t.dataset.tab;
+        ['info','leaderboard','add','discord'].forEach(id => document.getElementById(id).style.display = (id===tab?'block':'none'));
+        if (tab==='leaderboard') loadInventories();
+      };
     });
 
-    // ✅ Main Database Search
-    document.getElementById("mainSearch").addEventListener("input", (e) => {
-      const term = e.target.value.toLowerCase();
-      document.querySelectorAll(".inventory-item").forEach((item) => {
-        const name = item.querySelector(".item-name")?.textContent.toLowerCase() || "";
-        item.style.display = name.includes(term) ? "inline-block" : "none";
-      });
-    });
+    const apiBase = window.location.origin;
 
-    // ✅ Add Inventory Fetch
-    document.getElementById("addInventoryBtn").addEventListener("click", async () => {
-      const steamId = document.getElementById("steamIdInput").value.trim();
-      const status = document.getElementById("addStatus");
-      if (!steamId) return (status.textContent = "Please enter a valid Steam ID.");
-
-      status.textContent = "Fetching inventory...";
+    async function loadInventories(){
+      const el = document.getElementById('invList');
+      el.innerHTML = 'Loading...';
       try {
-        const response = await fetch(`/api/inventory/${steamId}`);
-        const data = await response.json();
-        if (data.error) throw new Error(data.error);
+        const res = await fetch(apiBase + '/api/inventories');
+        const list = await res.json();
+        if (!list.length) { el.innerHTML = '<div>No saved inventories yet.</div>'; return; }
+        el.innerHTML = '<ul>' + list.map(i => `<li><a href="#" data-id="${i.id}" class="invLink">${i.steamid}</a> (items view)</li>`).join('') + '</ul>';
+        document.querySelectorAll('.invLink').forEach(a=>{
+          a.onclick = async (e)=>{
+            e.preventDefault();
+            const id = a.dataset.id;
+            const itemsArea = document.getElementById('itemsArea');
+            itemsArea.innerHTML = 'Loading items...';
+            const r = await fetch(apiBase + '/api/inventories/' + id + '/items');
+            const items = await r.json();
+            if (!items.length) { itemsArea.innerHTML = 'No items'; return; }
+            itemsArea.innerHTML = '<div class="grid">' + items.slice(0,200).map(it => `<div class="card"><img src="${it.icon_url||'https://placehold.co/80x80?text=?'}" style="width:80px;height:80px"><div style="font-size:12px">${it.market_hash_name||it.name||'Unknown'}</div></div>`).join('') + '</div>';
+          };
+        });
+      } catch (err) { el.innerHTML = 'Error loading inventories'; console.error(err); }
+    }
 
-        status.textContent = `Loaded ${data.assets?.length || 0} items for Steam ID: ${steamId}`;
-        renderInventory(data.assets || []);
-      } catch (err) {
-        console.error(err);
-        status.textContent = "Failed to load inventory.";
-      }
+    // fetch & save inventory
+    document.getElementById('fetchBtn').addEventListener('click', async ()=>{
+      const steam = document.getElementById('steamInput').value.trim();
+      const status = document.getElementById('status');
+      if (!steam) return status.textContent = 'Enter SteamID';
+      status.textContent = 'Fetching...';
+      try {
+        const res = await fetch(apiBase + '/api/fetch', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ steamid: steam }) });
+        const j = await res.json();
+        if (res.ok) status.textContent = `Saved inventory ID ${j.inventoryId} (${j.assets} assets)`;
+        else status.textContent = 'Failed: ' + (j.error||JSON.stringify(j));
+      } catch (err) { status.textContent = 'Fetch error'; console.error(err); }
     });
 
-    // ✅ Render Inventory
-    function renderInventory(items) {
-      const grid = document.getElementById("inventoryGrid");
-      grid.innerHTML = "";
-      items.forEach((item, i) => {
-        const div = document.createElement("div");
-        div.className = "inventory-item";
-        div.innerHTML = `
-          <div class="item-name">Item ${i + 1}</div>
-          <img src="https://placehold.co/80x80?text=Item" alt="Item Image">
-          <div class="item-count">x1</div>
-        `;
-        grid.appendChild(div);
-      });
-    }
+    // global search (client-side filtering of currently shown items)
+    document.getElementById('globalSearch').addEventListener('input', async (e) => {
+      const q = e.target.value.trim();
+      if (!q) return;
+      try {
+        const res = await fetch(apiBase + '/api/search?q=' + encodeURIComponent(q));
+        const rows = await res.json();
+        const area = document.getElementById('itemsArea');
+        if (!rows.length) { area.innerHTML = 'No results'; return; }
+        area.innerHTML = '<div class="grid">' + rows.slice(0,200).map(it => `<div class="card"><img src="${it.icon_url||'https://placehold.co/80x80?text=?'}" style="width:80px;height:80px"><div style="font-size:12px">${it.market_hash_name||it.name||'Unknown'}</div></div>`).join('') + '</div>';
+      } catch (err) { console.error(err); }
+    });
+
+    // init
+    // loadInventories(); // lazy: load when leaderboard tab clicked
   </script>
 </body>
 </html>
-
