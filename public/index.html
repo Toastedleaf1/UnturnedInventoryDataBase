@@ -1,5 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Unturned Steam Inventory Database</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #0e0e0e;
+      color: white;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+    }
+
+    .tabs {
+      display: flex;
+      justify-content: center;
+      background-color: #111;
+      border-bottom: 2px solid #32cd32;
+    }
+
+    .tab {
+      padding: 14px 24px;
+      cursor: pointer;
+      color: #ccc;
+      position: relative;
+      font-size: 16px;
+      transition: color 0.2s ease;
+    }
+
+    .tab:hover {
+      color: white;
+    }
+
+    .tab::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 3px;
+      background-color: #32cd32;
+      transform: scaleX(0);
+      transition: transform 0.2s ease;
+    }
+
+    .tab:hover::after {
+      transform: scaleX(0.5);
+    }
+
+    .tab.active {
+      color: white;
+    }
+
+    .tab.active::after {
+      transform: scaleX(1);
+    }
+
+    .search-bar {
+      width: 100%;
+      text-align: center;
+      margin: 10px 0;
+    }
+
+    .search-bar input {
+      width: 60%;
+      padding: 8px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 0;
+    }
+
+    .tab-content {
+      padding: 20px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .add-inventory-bar {
+      margin-top: 10px;
+    }
+
+    .add-inventory-bar input {
+      padding: 6px;
+      font-size: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .add-inventory-bar button {
+      background-color: #32cd32;
+      color: white;
+      border: none;
+      padding: 6px 10px;
+      margin-left: 6px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .add-inventory-bar button:hover {
+      background-color: #28a428;
+    }
+
+    .discord-button {
+      display: inline-block;
+      background-color: #5865f2;
+      color: white;
+      text-decoration: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .discord-button:hover {
+      background-color: #4752c4;
+      color: #e5e5e5;
+    }
+
+    .inventory-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      padding: 20px;
+    }
+
+    .inventory-item {
+      width: 100px;
+      height: 120px;
+      background-color: #1a1a1a;
+      border-radius: 4px;
+      padding: 6px;
+      text-align: center;
+      font-size: 14px;
+      color: #ccc;
+      position: relative;
+    }
+
+    .inventory-item img {
+      width: 80px;
+      height: 80px;
+      border-radius: 4px;
+    }
+
+    .item-name {
+      margin-top: 4px;
+      font-size: 13px;
+    }
+
+    .item-count {
+      position: absolute;
+      bottom: 4px;
+      right: 6px;
+      font-size: 12px;
+      color: #32cd32;
+    }
+  </style>
+</head>
+
 <body>
-  <!-- ✅ Tab Navigation -->
+  <!-- ✅ Tabs -->
   <div class="tabs">
     <div class="tab active" data-tab="info">Info</div>
     <div class="tab" data-tab="leaderboard">Inventory Leaderboard</div>
@@ -7,7 +172,7 @@
     <div class="tab" data-tab="discord">Discord</div>
   </div>
 
-  <!-- ✅ Global Search Bar (for database skins) -->
+  <!-- ✅ Global Search Bar -->
   <div class="search-bar">
     <input type="text" id="mainSearch" placeholder="Search skins..." />
   </div>
@@ -16,8 +181,10 @@
   <div class="tab-content" id="info">
     <h2>Unturned Steam Inventory Database</h2>
     <p>
-      Explore and compare Unturned item inventories from public Steam accounts.
-      Prices may not be accurate due to regional differences, Steam delays, and low-sale history.
+      Explore and compare Unturned item inventories from public Steam accounts.<br />
+      <span style="color: #ff4444; text-decoration: underline;">
+        Prices may not be accurate due to regional differences, Steam delays, and low-sale history.
+      </span>
     </p>
   </div>
 
@@ -40,11 +207,71 @@
 
   <div class="tab-content hidden" id="discord">
     <h2>Discord</h2>
-    <a href="https://discord.gg/jmd4qzD4JF" class="discord-button" target="_blank">
-      Join Our Discord
-    </a>
+    <a href="https://discord.gg/jmd4qzD4JF" class="discord-button" target="_blank">Join Our Discord</a>
   </div>
 
-  <!-- ✅ Database Grid -->
+  <!-- ✅ Inventory Grid -->
   <div id="inventoryGrid" class="inventory-grid"></div>
+
+  <script>
+    // ✅ Tabs
+    const tabs = document.querySelectorAll(".tab");
+    const contents = document.querySelectorAll(".tab-content");
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        tabs.forEach((t) => t.classList.remove("active"));
+        contents.forEach((c) => c.classList.add("hidden"));
+        tab.classList.add("active");
+        document.getElementById(tab.dataset.tab).classList.remove("hidden");
+      });
+    });
+
+    // ✅ Main Database Search
+    document.getElementById("mainSearch").addEventListener("input", (e) => {
+      const term = e.target.value.toLowerCase();
+      document.querySelectorAll(".inventory-item").forEach((item) => {
+        const name = item.querySelector(".item-name")?.textContent.toLowerCase() || "";
+        item.style.display = name.includes(term) ? "inline-block" : "none";
+      });
+    });
+
+    // ✅ Add Inventory Fetch
+    document.getElementById("addInventoryBtn").addEventListener("click", async () => {
+      const steamId = document.getElementById("steamIdInput").value.trim();
+      const status = document.getElementById("addStatus");
+      if (!steamId) return (status.textContent = "Please enter a valid Steam ID.");
+
+      status.textContent = "Fetching inventory...";
+      try {
+        const response = await fetch(`/api/inventory/${steamId}`);
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
+
+        status.textContent = `Loaded ${data.assets?.length || 0} items for Steam ID: ${steamId}`;
+        renderInventory(data.assets || []);
+      } catch (err) {
+        console.error(err);
+        status.textContent = "Failed to load inventory.";
+      }
+    });
+
+    // ✅ Render Inventory
+    function renderInventory(items) {
+      const grid = document.getElementById("inventoryGrid");
+      grid.innerHTML = "";
+      items.forEach((item, i) => {
+        const div = document.createElement("div");
+        div.className = "inventory-item";
+        div.innerHTML = `
+          <div class="item-name">Item ${i + 1}</div>
+          <img src="https://placehold.co/80x80?text=Item" alt="Item Image">
+          <div class="item-count">x1</div>
+        `;
+        grid.appendChild(div);
+      });
+    }
+  </script>
 </body>
+</html>
+
