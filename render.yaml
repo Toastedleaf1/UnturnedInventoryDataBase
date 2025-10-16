@@ -3,6 +3,11 @@ services:
     name: unturned-inventory-database
     env: node
     plan: free
-    buildCommand: "npm install"
-    startCommand: "npm start"
-    autoDeploy: true
+    region: oregon  # or frankfurt/london depending on your users
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SECRET_TOKEN
+        generateValue: true
