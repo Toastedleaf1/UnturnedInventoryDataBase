@@ -1,311 +1,50 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Unturned Steam Inventory Database</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #0e1117;
-      color: white;
-      margin: 0;
-      padding: 0;
-      text-align: center;
-    }
-
-    header {
-      background-color: #1b1f25;
-      padding: 10px 0;
-      border-bottom: 2px solid #43d048;
-    }
-
-    .tabs {
-      display: flex;
-      justify-content: center;
-      gap: 20px;
-      border-bottom: 1px solid #43d048;
-      padding-bottom: 10px;
-    }
-
-    .tab {
-      cursor: pointer;
-      padding: 8px 14px;
-      color: white;
-      font-weight: bold;
-      position: relative;
-    }
-
-    .tab.active::after {
-      content: "";
-      position: absolute;
-      bottom: -4px;
-      left: 0;
-      width: 100%;
-      height: 3px;
-      background-color: #43d048;
-      transition: 0.3s;
-    }
-
-    .tab:hover {
-      opacity: 0.8;
-    }
-
-    .content {
-      display: none;
-      padding: 20px;
-    }
-
-    .content.active {
-      display: block;
-    }
-
-    /* Search Section */
-    .search-bar {
-      display: flex;
-      justify-content: center;
-      margin: 15px 0;
-    }
-
-    .search-bar input {
-      padding: 8px 12px;
-      width: 280px;
-      border: 1px solid #aaa;
-      border-radius: 0;
-      background-color: #222;
-      color: white;
-    }
-
-    .search-bar button {
-      background-color: #43d048;
-      color: white;
-      border: none;
-      padding: 8px 14px;
-      cursor: pointer;
-    }
-
-    .search-bar button:hover {
-      background-color: #36b23b;
-    }
-
-    /* Loading Spinner */
-    .loading-spinner {
-      border: 3px solid rgba(255, 255, 255, 0.2);
-      border-top: 3px solid white;
-      border-radius: 50%;
-      width: 14px;
-      height: 14px;
-      display: inline-block;
-      animation: spin 0.8s linear infinite;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    /* Leaderboard */
-    .leaderboard-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-      margin-top: 20px;
-    }
-
-    .player-card {
-      display: flex;
-      align-items: center;
-      background-color: #1e1e1e;
-      color: white;
-      padding: 10px;
-      border-radius: 8px;
-      width: 90%;
-      max-width: 500px;
-      border-left: 4px solid #43d048;
-    }
-
-    .player-link {
-      display: flex;
-      align-items: center;
-      text-decoration: none;
-      color: white;
-      width: 100%;
-    }
-
-    .steam-avatar {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      margin-right: 12px;
-    }
-
-    .item-card {
-      background-color: #222;
-      padding: 6px 10px;
-      border-radius: 6px;
-      width: 85%;
-      color: #ddd;
-      margin: 3px auto;
-    }
-
-    .price-note {
-      color: #ff5555;
-      text-decoration: underline;
-      font-size: 0.8rem;
-    }
-
-    /* Discord Link */
-    .discord-link {
-      background-color: #5865F2;
-      color: white;
-      text-decoration: none;
-      padding: 10px 20px;
-      border-radius: 8px;
-      font-weight: bold;
-      transition: 0.2s;
-    }
-
-    .discord-link:hover {
-      background-color: #4752C4;
-      color: #e0e0e0;
-    }
-
-    /* Loading Text */
-    #loading-message {
-      color: white;
-      opacity: 0.9;
-      font-style: italic;
-      animation: fade 1.4s ease-in-out infinite alternate;
-    }
-
-    @keyframes fade {
-      from { opacity: 0.6; }
-      to { opacity: 1; }
-    }
-  </style>
-</head>
 <body>
-  <header>
-    <h1>Unturned Steam Inventory Database</h1>
-    <div class="tabs">
-      <div class="tab active" data-tab="info">Info</div>
-      <div class="tab" data-tab="leaderboard">Inventory Leaderboard</div>
-      <div class="tab" data-tab="add">Add Inventory</div>
-      <div class="tab" data-tab="discord">Discord</div>
-    </div>
-  </header>
+  <!-- ✅ Tab Navigation -->
+  <div class="tabs">
+    <div class="tab active" data-tab="info">Info</div>
+    <div class="tab" data-tab="leaderboard">Inventory Leaderboard</div>
+    <div class="tab" data-tab="add">Add Inventory</div>
+    <div class="tab" data-tab="discord">Discord</div>
+  </div>
 
-  <!-- Info Tab -->
-  <div id="info" class="content active">
-    <h2>About This Site</h2>
+  <!-- ✅ Global Search Bar (for database skins) -->
+  <div class="search-bar">
+    <input type="text" id="mainSearch" placeholder="Search skins..." />
+  </div>
+
+  <!-- ✅ Tab Contents -->
+  <div class="tab-content" id="info">
+    <h2>Unturned Steam Inventory Database</h2>
     <p>
-      This database allows you to browse and compare Unturned Steam inventories, 
-      track item values, and view leaderboard rankings.
+      Explore and compare Unturned item inventories from public Steam accounts.
+      Prices may not be accurate due to regional differences, Steam delays, and low-sale history.
     </p>
-    <p class="price-note">prices may not be accurate. due to regional differences, Steam delays, low-sale history.</p>
   </div>
 
-  <!-- Leaderboard Tab -->
-  <div id="leaderboard" class="content">
-    <form id="steam-search-form" class="search-bar">
-      <input id="steam-search-input" type="text" placeholder="Enter Steam ID..." />
-      <button type="submit">Search</button>
-    </form>
-
-    <div id="loading-message" style="display:none;">
-      <span class="loading-spinner"></span> Loading inventory...
+  <div class="tab-content hidden" id="leaderboard">
+    <h2>Inventory Leaderboard</h2>
+    <div id="leaderboardContent">
+      <p>Loading leaderboard...</p>
     </div>
-
-    <div id="inventory-leaderboard" class="leaderboard-container"></div>
   </div>
 
-  <!-- Add Inventory Tab -->
-  <div id="add" class="content">
-    <h2>Add a Steam Inventory</h2>
-    <p>Enter a Steam ID to add its inventory to the leaderboard.</p>
+  <div class="tab-content hidden" id="add">
+    <h2>Add Inventory</h2>
+    <p>Enter a Steam ID to import that account’s Unturned inventory:</p>
+    <div class="add-inventory-bar">
+      <input type="text" id="steamIdInput" placeholder="Enter Steam ID" />
+      <button id="addInventoryBtn">Add Inventory</button>
+    </div>
+    <div id="addStatus"></div>
   </div>
 
-  <!-- Discord Tab -->
-  <div id="discord" class="content">
-    <h2>Join Our Community</h2>
-    <a href="https://discord.gg/jmd4qzD4JF" target="_blank" class="discord-link">Join Discord</a>
+  <div class="tab-content hidden" id="discord">
+    <h2>Discord</h2>
+    <a href="https://discord.gg/jmd4qzD4JF" class="discord-button" target="_blank">
+      Join Our Discord
+    </a>
   </div>
 
-  <script>
-    // Tab switching logic
-    const tabs = document.querySelectorAll(".tab");
-    const contents = document.querySelectorAll(".content");
-
-    tabs.forEach(tab => {
-      tab.addEventListener("click", () => {
-        tabs.forEach(t => t.classList.remove("active"));
-        contents.forEach(c => c.classList.remove("active"));
-        tab.classList.add("active");
-        document.getElementById(tab.dataset.tab).classList.add("active");
-      });
-    });
-
-    // Steam inventory search logic
-    document.addEventListener("DOMContentLoaded", () => {
-      const searchForm = document.getElementById("steam-search-form");
-      const searchInput = document.getElementById("steam-search-input");
-      const leaderboard = document.getElementById("inventory-leaderboard");
-      const loadingMessage = document.getElementById("loading-message");
-
-      if (!searchForm) return;
-
-      searchForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const steamId = searchInput.value.trim();
-        if (!steamId) return alert("Enter a Steam ID.");
-
-        leaderboard.innerHTML = "";
-        loadingMessage.style.display = "block";
-
-        try {
-          const res = await fetch(`/api/inventory/${steamId}`);
-          if (!res.ok) throw new Error("Failed to fetch inventory");
-          const data = await res.json();
-          loadingMessage.style.display = "none";
-
-          if (!data.descriptions || data.descriptions.length === 0) {
-            leaderboard.innerHTML = "<p>No items found or inventory is private.</p>";
-            return;
-          }
-
-          const steamProfileUrl = `https://steamcommunity.com/profiles/${steamId}`;
-          const playerCard = document.createElement("div");
-          playerCard.className = "player-card";
-          playerCard.innerHTML = `
-            <a href="${steamProfileUrl}" target="_blank" class="player-link">
-              <img src="https://avatars.cloudflare.steamstatic.com/${steamId}_full.jpg" alt="Steam Avatar" class="steam-avatar">
-              <div class="player-info">
-                <h3>Steam ID: ${steamId}</h3>
-                <p>Inventory Items: ${data.descriptions.length}</p>
-                <small class="price-note">prices may not be accurate. due to regional differences, Steam delays, low-sale history.</small>
-              </div>
-            </a>
-          `;
-          leaderboard.appendChild(playerCard);
-
-          data.descriptions.forEach((item) => {
-            const itemDiv = document.createElement("div");
-            itemDiv.className = "item-card";
-            itemDiv.innerHTML = `
-              <div class="item-name">${item.market_hash_name}</div>
-              <div class="item-type">${item.type || "Unknown Type"}</div>
-            `;
-            leaderboard.appendChild(itemDiv);
-          });
-        } catch (err) {
-          console.error("Error fetching inventory:", err);
-          loadingMessage.style.display = "none";
-          leaderboard.innerHTML = "<p class='error'>Failed to load inventory. Please check the Steam ID.</p>";
-        }
-      });
-    });
-  </script>
+  <!-- ✅ Database Grid -->
+  <div id="inventoryGrid" class="inventory-grid"></div>
 </body>
-</html>
-
