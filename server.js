@@ -9,26 +9,20 @@ import cors from "cors";
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ✅ Allow frontend calls
 app.use(cors());
-app.use(express.json());
 app.use(express.static("public"));
+app.use(express.json());
 
-// ✅ Create temporary data directory for database
+// ==================== DATABASE SETUP ====================
 const dataDir = path.join(os.tmpdir(), "data");
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-  console.log(`📁 Created temporary data directory at ${dataDir}`);
-}
+if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
-// ✅ Initialize SQLite
 const dbPath = path.join(dataDir, "market_cache.db");
 const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) console.error("❌ Failed to open database:", err.message);
-  else console.log(`✅ Connected to SQLite database at ${dbPath}`);
+  if (err) console.error("❌ Database Error:", err.message);
+  else console.log(`✅ Connected to SQLite at ${dbPath}`);
 });
 
-// ✅ Create tables if missing
 db.run(`
   CREATE TABLE IF NOT EXISTS market_cache (
     item_name TEXT PRIMARY KEY,
@@ -36,149 +30,102 @@ db.run(`
     last_updated INTEGER
   )
 `);
-db.run(`
-  CREATE TABLE IF NOT EXISTS saved_inventories (
-    steam_id TEXT PRIMARY KEY,
-    item_count INTEGER,
-    inventory_json TEXT,
-    last_updated INTEGER
-  )
-`);
 
-// ✅ Secret key for admin cache clearing
 const SECRET_TOKEN = process.env.SECRET_TOKEN || "supersecretkey123";
 
-// ✅ Helper function for fetching inventory (with proxy fallback)
-async function fetchInventory(steamId, useProxy = false, proxyChoice = 0) {
-  const directUrl = `https://steamcommunity.com/inventory/${steamId}/304930/2?l=english&count=5000`;
+// ==================== INVENTORY FETCH ====================
+async function fetchInventory(steamId, method = "direct") {
+  let url;
+  switch (method) {
+    case "direct":
+      url = `https://steamcommunity.com/inventory/${steamId}/304930/2?l=english&count=5000`;
+      break;
+    case "allorigins":
+      url = `https://api.allorigins.win/raw?url=${encodeURIComponent(
+        `https://steamcommunity.com/inventory/${steamId}/304930/2?l=english&count=5000`
+      )}`;
+      break;
+    case "corsproxy":
+      url = `https://corsproxy.io/?https://steamcommunity.com/inventory/${steamId}/304930/2?l=english&count=5000`;
+      break;
+    case "scmm":
+      // ✅ NEW fallback: SCMM endpoint
+      url = `https://rust.scmm.app/inventory/${steamId}`;
+      break;
+  }
 
-  const proxyList = [
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(directUrl)}`,
-    `https://corsproxy.io/?${encodeURIComponent(directUrl)}`
-  ];
-  const url = useProxy ? proxyList[proxyChoice] : directUrl;
-
-  console.log(`🌐 Attempting ${useProxy ? "Proxy" : "Direct"} fetch${useProxy ? " via " + proxyList[proxyChoice] : ""} for ${steamId}`);
-
+  console.log(`🌐 Fetching [${method}] inventory for ${steamId}`);
   const response = await fetch(url, {
     headers: {
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
       "Accept": "application/json, text/plain, */*",
       "Accept-Language": "en-US,en;q=0.9",
-      "Connection": "keep-alive",
     },
   });
 
-  console.log(`🔍 [${useProxy ? "Proxy" : "Direct"}] Status ${response.status}: ${response.statusText}`);
-  const rawText = await response.text();
-  console.log(`🧾 [${useProxy ? "Proxy" : "Direct"}] Response preview:`, rawText.slice(0, 300));
+  console.log(`🔍 [${method}] Status ${response.status}: ${response.statusText}`);
+  const text = await response.text();
+  console.log(`🧾 [${method}] Preview:`, text.slice(0, 300));
 
-  if (!response.ok || !rawText || rawText === "null") {
-    throw new Error(`Invalid or blocked response (${response.status})`);
-  }
-
-  return JSON.parse(rawText);
+  if (!response.ok || !text || text === "null") throw new Error(`Bad response from ${method}`);
+  return JSON.parse(text);
 }
 
-// ✅ API: Fetch Unturned inventory
+// ==================== API ROUTES ====================
 app.get("/api/inventory/:steamId", async (req, res) => {
-  try {
-    const steamId = req.params.steamId;
-    if (!/^\d{17}$/.test(steamId)) return res.status(400).json({ error: "Invalid SteamID64" });
+  const steamId = req.params.steamId;
 
-    let data;
+  if (!/^\d{17}$/.test(steamId)) {
+    return res.status(400).json({ error: "Invalid SteamID64" });
+  }
+
+  const methods = ["direct", "allorigins", "corsproxy", "scmm"];
+
+  for (const method of methods) {
     try {
-      data = await fetchInventory(steamId);
-    } catch (err1) {
-      console.warn(`⚠️ Direct failed: ${err1.message}, retrying with proxy...`);
-      try {
-        data = await fetchInventory(steamId, true, 0);
-      } catch (err2) {
-        console.warn(`⚠️ AllOrigins failed: ${err2.message}, retrying with CorsProxy.io...`);
-        try {
-          data = await fetchInventory(steamId, true, 1);
-        } catch (err3) {
-          console.error(`❌ Proxy fetch failed: ${err3.message}`);
-          return res.status(500).json({ error: "Steam API unreachable (direct and proxy failed)" });
-        }
+      const data = await fetchInventory(steamId, method);
+
+      // ✅ Validate structure before sending
+      if (data && (data.assets || data.items || Array.isArray(data))) {
+        console.log(`✅ Success with method: ${method}`);
+        return res.json(data);
+      } else {
+        console.warn(`⚠️ ${method} returned invalid structure`);
       }
+    } catch (err) {
+      console.warn(`⚠️ ${method} failed: ${err.message}`);
     }
-
-    res.json(data);
-  } catch (err) {
-    console.error("❌ Steam API error:", err.message);
-    res.status(500).json({ error: "Steam API request failed" });
-  }
-});
-
-// ✅ Save inventory to database
-app.post("/api/save-inventory", (req, res) => {
-  const { steamId, inventory } = req.body;
-  if (!steamId || !Array.isArray(inventory)) {
-    return res.status(400).json({ error: "Invalid data" });
   }
 
-  const now = Date.now();
-  const itemCount = inventory.length;
-
-  db.run(
-    `INSERT INTO saved_inventories (steam_id, item_count, inventory_json, last_updated)
-     VALUES (?, ?, ?, ?)
-     ON CONFLICT(steam_id) DO UPDATE SET
-       item_count = excluded.item_count,
-       inventory_json = excluded.inventory_json,
-       last_updated = excluded.last_updated`,
-    [steamId, itemCount, JSON.stringify(inventory), now],
-    (err) => {
-      if (err) return res.status(500).json({ error: "Database save error" });
-      console.log(`💾 Saved ${itemCount} items for ${steamId}`);
-      res.json({ success: true, items: itemCount });
-    }
-  );
+  console.error("❌ All fetch methods failed.");
+  res.status(500).json({ error: "Failed to fetch inventory from all sources." });
 });
 
-// ✅ Leaderboard
-app.get("/api/leaderboard", (req, res) => {
-  db.all(
-    "SELECT steam_id, item_count FROM saved_inventories ORDER BY item_count DESC LIMIT 20",
-    (err, rows) => {
-      if (err) return res.status(500).json({ error: "Database error" });
-      res.json(rows || []);
-    }
-  );
-});
-
-// ✅ Search saved inventory
-app.get("/api/search/:steamId", (req, res) => {
-  const { steamId } = req.params;
+// ==================== CACHE + ADMIN ====================
+app.get("/api/price/:item", (req, res) => {
   db.get(
-    "SELECT inventory_json, last_updated FROM saved_inventories WHERE steam_id = ?",
-    [steamId],
+    "SELECT price, last_updated FROM market_cache WHERE item_name = ?",
+    [req.params.item],
     (err, row) => {
       if (err) return res.status(500).json({ error: "Database error" });
-      if (!row) return res.status(404).json({ error: "Inventory not found" });
-      res.json({
-        inventory: JSON.parse(row.inventory_json),
-        last_updated: row.last_updated,
-      });
+      res.json(row ? { cached: true, ...row } : { cached: false });
     }
   );
 });
 
-// ✅ Clear cache (requires secret token)
 app.post("/api/clear-cache", (req, res) => {
   const token = req.headers.authorization?.replace("Bearer ", "");
   if (token !== SECRET_TOKEN) return res.status(403).json({ error: "Unauthorized" });
 
   db.run("DELETE FROM market_cache", (err) => {
     if (err) return res.status(500).json({ error: "Failed to clear cache" });
-    console.log("🧹 Cache cleared successfully");
     res.json({ success: true, message: "Cache cleared successfully" });
   });
 });
 
-// ✅ Simple test route
+// ==================== TEST ROUTE ====================
 app.get("/ping", (req, res) => res.json({ ok: true, msg: "Server running" }));
 
-// ✅ Start the server
+// ==================== START ====================
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+
