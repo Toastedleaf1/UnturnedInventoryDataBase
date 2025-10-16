@@ -1,44 +1,160 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Unturned Inventory Database</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #121212; color: #fff; margin: 40px; }
-    h1 { color: #00ffff; }
-    input, button { padding: 8px; border-radius: 6px; border: none; margin: 4px; }
-    button { cursor: pointer; background: #00ffff; color: #000; }
-    pre { background: #1e1e1e; padding: 12px; border-radius: 6px; overflow-x: auto; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: #fff;
+      margin: 40px;
+    }
+    h1 {
+      color: #00ff99;
+      margin-bottom: 10px;
+    }
+    h3 {
+      margin-top: 30px;
+      color: #00ff99;
+    }
+    input, button {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      margin: 4px;
+    }
+    input {
+      width: 240px;
+    }
+    button {
+      cursor: pointer;
+      background: #00ff99;
+      color: #000;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #00cc7a;
+    }
+    pre {
+      background: #1e1e1e;
+      padding: 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .leaderboard-entry {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #1b1b1b;
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin-bottom: 6px;
+    }
+    .leaderboard-entry:hover {
+      background: #222;
+    }
+    .steam-link {
+      color: #00aaff;
+      text-decoration: none;
+      font-weight: bold;
+      transition: color 0.2s;
+    }
+    .steam-link:hover {
+      color: #0088cc;
+      text-decoration: underline;
+    }
+    .view-btn {
+      background: #0078ff;
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+    .view-btn:hover {
+      background: #005fcc;
+    }
   </style>
 </head>
 <body>
   <h1>🔍 Unturned Inventory Database</h1>
 
   <input id="steamId" placeholder="Enter SteamID64" />
-  <button id="fetchBtn">Fetch Inventory</button>
+  <button id="fetchBtn">Fetch & Save Inventory</button>
 
   <h3>Results</h3>
-  <pre id="result"></pre>
+  <pre id="result">No request yet.</pre>
 
-  <h3>🏆 Leaderboard</h3>
+  <h3>🏆 Inventory Leaderboard</h3>
   <pre id="leaderboard">Loading...</pre>
+
+  <h3>🔎 Search Saved Inventory</h3>
+  <input id="searchId" placeholder="Enter SteamID64 to view" />
+  <button id="searchBtn">Search</button>
+
+  <h3>📦 Inventory Viewer</h3>
+  <pre id="inventoryView">No inventory selected.</pre>
 
   <script>
     const resultBox = document.getElementById("result");
     const leaderboardBox = document.getElementById("leaderboard");
+    const inventoryView = document.getElementById("inventoryView");
 
     async function refreshLeaderboard() {
+      leaderboardBox.textContent = "Loading leaderboard...";
       const res = await fetch("/api/leaderboard");
       const data = await res.json();
-      leaderboardBox.textContent = data.map(
-        (r, i) => `${i + 1}. ${r.steam_id} — ${r.item_count} items`
-      ).join("\n") || "No data yet.";
+
+      if (!data.length) {
+        leaderboardBox.textContent = "No inventories saved yet.";
+        return;
+      }
+
+      leaderboardBox.innerHTML = "";
+      data.forEach((r, i) => {
+        const div = document.createElement("div");
+        div.className = "leaderboard-entry";
+        div.innerHTML = `
+          <span>
+            #${i + 1} • 
+            <a href="https://steamcommunity.com/profiles/${r.steam_id}" target="_blank" class="steam-link">
+              ${r.steam_id}
+            </a>
+          </span>
+          <span>${r.item_count} items</span>
+          <button class="view-btn" data-id="${r.steam_id}">View</button>
+        `;
+        leaderboardBox.appendChild(div);
+      });
+
+      // Add click events for "View" buttons
+      document.querySelectorAll(".view-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const id = btn.getAttribute("data-id");
+          await loadInventory(id);
+        });
+      });
+    }
+
+    async function loadInventory(steamId) {
+      inventoryView.textContent = `Loading inventory for ${steamId}...`;
+      try {
+        const res = await fetch(`/api/search/${steamId}`);
+        if (!res.ok) throw new Error("Not found or DB error.");
+        const data = await res.json();
+        inventoryView.textContent = `✅ ${steamId} — ${data.inventory.length} items\nLast Updated: ${new Date(data.last_updated).toLocaleString()}`;
+      } catch (err) {
+        inventoryView.textContent = `❌ Failed to load inventory: ${err.message}`;
+      }
     }
 
     document.getElementById("fetchBtn").addEventListener("click", async () => {
       const steamId = document.getElementById("steamId").value.trim();
-      resultBox.textContent = "Fetching inventory...";
+      resultBox.textContent = "Fetching Steam inventory...";
 
       if (!/^\d{17}$/.test(steamId)) {
         resultBox.textContent = "❌ Invalid SteamID64.";
@@ -67,7 +183,13 @@
       }
     });
 
+    document.getElementById("searchBtn").addEventListener("click", async () => {
+      const steamId = document.getElementById("searchId").value.trim();
+      await loadInventory(steamId);
+    });
+
     refreshLeaderboard();
   </script>
 </body>
 </html>
+
