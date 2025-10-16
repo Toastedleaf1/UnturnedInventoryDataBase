@@ -1,53 +1,73 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Unturned Inventory Database</title>
   <style>
-    body { font-family: Arial; margin: 40px; background: #121212; color: #fff; }
-    input, button { padding: 8px; border-radius: 6px; }
-    button { cursor: pointer; }
+    body { font-family: Arial, sans-serif; background: #121212; color: #fff; margin: 40px; }
+    h1 { color: #00ffff; }
+    input, button { padding: 8px; border-radius: 6px; border: none; margin: 4px; }
+    button { cursor: pointer; background: #00ffff; color: #000; }
+    pre { background: #1e1e1e; padding: 12px; border-radius: 6px; overflow-x: auto; }
   </style>
 </head>
 <body>
-  <h1>🔍 Unturned Inventory Lookup</h1>
+  <h1>🔍 Unturned Inventory Database</h1>
+
   <input id="steamId" placeholder="Enter SteamID64" />
   <button id="fetchBtn">Fetch Inventory</button>
 
+  <h3>Results</h3>
   <pre id="result"></pre>
 
+  <h3>🏆 Leaderboard</h3>
+  <pre id="leaderboard">Loading...</pre>
+
   <script>
+    const resultBox = document.getElementById("result");
+    const leaderboardBox = document.getElementById("leaderboard");
+
+    async function refreshLeaderboard() {
+      const res = await fetch("/api/leaderboard");
+      const data = await res.json();
+      leaderboardBox.textContent = data.map(
+        (r, i) => `${i + 1}. ${r.steam_id} — ${r.item_count} items`
+      ).join("\n") || "No data yet.";
+    }
+
     document.getElementById("fetchBtn").addEventListener("click", async () => {
       const steamId = document.getElementById("steamId").value.trim();
-      const resultBox = document.getElementById("result");
-      resultBox.textContent = "Fetching...";
+      resultBox.textContent = "Fetching inventory...";
 
       if (!/^\d{17}$/.test(steamId)) {
-        resultBox.textContent = "❌ Invalid SteamID64";
+        resultBox.textContent = "❌ Invalid SteamID64.";
         return;
       }
 
-      const url = `https://steamcommunity.com/inventory/${steamId}/304930/2?l=english&count=5000`;
       try {
+        const url = `https://steamcommunity.com/inventory/${steamId}/304930/2?l=english&count=5000`;
         const response = await fetch(url);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
 
-        if (!data.assets) throw new Error("Inventory private or empty");
-        resultBox.textContent = JSON.stringify(data, null, 2);
+        if (!data.assets) throw new Error("Inventory is private or empty.");
+        resultBox.textContent = `✅ Found ${data.assets.length} items. Uploading...`;
 
-        // Send to backend for saving
-        await fetch("/api/save-inventory", {
+        const saveRes = await fetch("/api/save-inventory", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ steamId, inventory: data.assets })
+          body: JSON.stringify({ steamId, inventory: data.assets }),
         });
-
+        const saveData = await saveRes.json();
+        resultBox.textContent = `✅ Saved ${saveData.items} items for ${steamId}`;
+        refreshLeaderboard();
       } catch (err) {
         resultBox.textContent = `❌ Failed: ${err.message}`;
       }
     });
+
+    refreshLeaderboard();
   </script>
 </body>
 </html>
